@@ -482,6 +482,14 @@ class TestIntegration(unittest.TestCase):
         parsed = json.loads(out)
         self.assertEqual(parsed["summary"]["n_files"], 1)
 
+    def test_rename_marks_both_old_and_new_paths(self):
+        make_commit(self.tmp, {"src/old_name.py": "x=1\n"}, "initial")
+        subprocess.run(["git", "mv", "src/old_name.py", "src/new_name.py"], cwd=self.tmp, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "rename file"], cwd=self.tmp, check=True, capture_output=True)
+        statuses = diff_stat.get_name_status("HEAD~1", "HEAD", "commit", self.tmp)
+        self.assertEqual(statuses["src/old_name.py"], "R")
+        self.assertEqual(statuses["src/new_name.py"], "R")
+
     def test_markdown_format_end_to_end(self):
         make_commit(self.tmp, {"README.md": "# Hi\n"}, "initial")
         make_commit(self.tmp, {"README.md": "# Hi\n\nNew content\n"}, "update")

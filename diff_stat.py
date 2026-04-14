@@ -236,6 +236,11 @@ def get_name_status(base: str, head: Optional[str], mode: str, cwd: str) -> dict
         if not parts:
             continue
         status = parts[0][0]  # First char: A/M/D/R/C
+        if status in {"R", "C"} and len(parts) >= 3:
+            old_path, new_path = parts[1], parts[2]
+            result[new_path] = status
+            result[old_path] = status
+            continue
         path = parts[-1]  # Last field is destination path
         result[path] = status
     return result

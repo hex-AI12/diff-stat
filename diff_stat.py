@@ -751,12 +751,15 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("-f", "--format", choices=["terminal", "json", "markdown"], default="terminal")
     p.add_argument("-o", "--output", help="Write output to file")
     p.add_argument("--top", type=int, default=0, help="Show only top N files by churn")
-    p.add_argument("--unstaged", action="store_true")
-    p.add_argument("--staged", action="store_true")
-    p.add_argument("--no-color", action="store_true")
-    p.add_argument("--risk-threshold", type=int, default=0)
-    p.add_argument("-v", "--verbose", action="store_true")
-    return p.parse_args()
+    p.add_argument("--unstaged", action="store_true", help="Compare working tree vs HEAD")
+    p.add_argument("--staged", action="store_true", help="Compare staged changes vs HEAD")
+    p.add_argument("--no-color", action="store_true", help="Disable colored terminal output")
+    p.add_argument("--risk-threshold", type=int, default=0, help="Exit 1 if risk score >= N")
+    p.add_argument("-v", "--verbose", action="store_true", help="Show all changed files in terminal output")
+    args = p.parse_args()
+    if args.unstaged and args.staged:
+        p.error("--unstaged and --staged cannot be used together")
+    return args
 
 
 def main() -> int:
@@ -831,7 +834,9 @@ def main() -> int:
         output = format_terminal(stats, base_info, head_info, mode, args.verbose)
 
     if args.output:
-        Path(args.output).write_text(output)
+        output_path = Path(args.output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(output)
         print(f"Output written to {args.output}", file=sys.stderr)
     else:
         print(output)

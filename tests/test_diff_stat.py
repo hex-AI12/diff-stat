@@ -397,6 +397,16 @@ class TestFormatJSON(unittest.TestCase):
         self.assertIn("generated_at", out)
 
 
+# ── parse_args ────────────────────────────────────────────────────────────────
+
+class TestParseArgs(unittest.TestCase):
+
+    def test_rejects_staged_and_unstaged_together(self):
+        with patch.object(sys, "argv", ["diff-stat", "--staged", "--unstaged"]):
+            with self.assertRaises(SystemExit):
+                diff_stat.parse_args()
+
+
 # ── Integration (real git repo) ───────────────────────────────────────────────
 
 class TestIntegration(unittest.TestCase):
@@ -513,14 +523,21 @@ class TestIntegration(unittest.TestCase):
     def test_risk_threshold_exit_code(self):
         """Main should return 1 when risk >= threshold."""
         make_commit(self.tmp, {"app.py": "x=1\n"}, "initial")
-        # Many large changes to get high risk
         big_content = "\n".join([f"line_{i} = {i}" for i in range(500)])
         make_commit(self.tmp, {"app.py": big_content}, "big change")
-        stats = diff_stat.analyze(self.tmp, "HEAD~1", "HEAD", "commit", 0)
-        risk = stats["risk"]["score"]
-        # Set threshold just above actual score → should pass (return 0-like logic)
-        # We just test the risk score is computed correctly
-        self.assertGreater(risk, 0)
+        with patch.object(sys, "argv", ["diff-stat", "HEAD~1", "HEAD", "--repo", self.tmp, "--risk-threshold", "1", "--format", "json"]):
+            rc = diff_stat.main()
+        self.assertEqual(rc, 1)
+
+    def test_output_creates_parent_dirs(self):
+        make_commit(self.tmp, {"app.py": "x=1\n"}, "initial")
+        make_commit(self.tmp, {"app.py": "x=2\n"}, "update")
+        out_path = Path(self.tmp) / "reports" / "diff.md"
+        with patch.object(sys, "argv", ["diff-stat", "HEAD~1", "HEAD", "--repo", self.tmp, "--format", "markdown", "--output", str(out_path)]):
+            rc = diff_stat.main()
+        self.assertEqual(rc, 0)
+        self.assertTrue(out_path.exists())
+        self.assertIn("## Summary", out_path.read_text())
 
 
 # ── get_commit_info mocking ───────────────────────────────────────────────────

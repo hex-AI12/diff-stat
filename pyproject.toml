@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "diff-stat"
+version = "0.1.0"
+description = "Intelligent git diff summarizer with risk scoring"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "hex-AI12" }]
+keywords = ["git", "diff", "review", "cli", "risk"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Environment :: Console",
+  "Topic :: Software Development :: Version Control :: Git",
+]
+
+[project.scripts]
+diff-stat = "diff_stat:main"
+
+[tool.setuptools]
+py-modules = ["diff_stat"]

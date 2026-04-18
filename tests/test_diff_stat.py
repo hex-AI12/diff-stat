@@ -45,6 +45,32 @@ def make_commit(repo: str, files: dict[str, str], message: str) -> str:
     return result.stdout.split("]")[0].split("[")[1].split(" ")[-1].strip()
 
 
+class TestIgnorePatterns(unittest.TestCase):
+
+    def test_should_ignore_exact_glob(self):
+        self.assertTrue(diff_stat.should_ignore("dist/app.js", ["dist/*"]))
+
+    def test_should_ignore_nested_glob(self):
+        self.assertTrue(diff_stat.should_ignore("src/generated/client.py", ["src/generated/*"]))
+
+    def test_should_not_ignore_non_matching_path(self):
+        self.assertFalse(diff_stat.should_ignore("src/app.py", ["dist/*", "docs/*.md"]))
+
+    def test_analyze_filters_ignored_paths(self):
+        with patch("diff_stat.get_numstat", return_value=[
+            {"added": 10, "removed": 2, "path": "src/app.py"},
+            {"added": 50, "removed": 10, "path": "dist/bundle.js"},
+        ]), patch("diff_stat.get_name_status", return_value={
+            "src/app.py": "M",
+            "dist/bundle.js": "A",
+        }):
+            stats = diff_stat.analyze(".", "HEAD~1", "HEAD", "commit", 0, ["dist/*"])
+
+        self.assertEqual(stats["n_files"], 1)
+        self.assertEqual(stats["total_added"], 10)
+        self.assertEqual(stats["entries"][0].path, "src/app.py")
+
+
 # ── categorize ────────────────────────────────────────────────────────────────
 
 class TestCategorize(unittest.TestCase):

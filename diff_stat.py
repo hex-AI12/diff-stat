@@ -23,6 +23,7 @@ Options:
   --staged              Compare staging area vs HEAD
   --no-color            Disable colored terminal output
   --risk-threshold N    Exit 1 if risk score >= N (for CI use) [default: 0]
+  --ignore PATTERN      Ignore files matching glob pattern, repeatable
   -v, --verbose         Show per-file details in terminal output
   -h, --help            Show this help message
 """
@@ -34,6 +35,7 @@ import os
 import re
 import subprocess
 import sys
+from fnmatch import fnmatch
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -392,20 +394,30 @@ class FileEntry:
         return self.added + self.removed
 
 
+def should_ignore(path: str, patterns: list[str]) -> bool:
+    """Return True when a path matches any ignore glob pattern."""
+    norm = path.replace("\\", "/")
+    return any(fnmatch(norm, pattern) for pattern in patterns)
+
+
 def analyze(
     repo: str,
     base: str,
     head: Optional[str],
     mode: str,
     top: int,
+    ignore_patterns: Optional[list[str]] = None,
 ) -> dict:
     """Run full analysis and return structured stats dict."""
+    ignore_patterns = ignore_patterns or []
     numstat = get_numstat(base, head, mode, repo)
     name_status = get_name_status(base, head, mode, repo)
 
     entries: list[FileEntry] = []
     for row in numstat:
         path = row["path"]
+        if should_ignore(path, ignore_patterns):
+            continue
         entries.append(FileEntry(
             path=path,
             added=row["added"],
@@ -755,6 +767,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--staged", action="store_true", help="Compare staged changes vs HEAD")
     p.add_argument("--no-color", action="store_true", help="Disable colored terminal output")
     p.add_argument("--risk-threshold", type=int, default=0, help="Exit 1 if risk score >= N")
+    p.add_argument("--ignore", action="append", default=[], help="Ignore files matching glob pattern, repeatable")
     p.add_argument("-v", "--verbose", action="store_true", help="Show all changed files in terminal output")
     args = p.parse_args()
     if args.unstaged and args.staged:
@@ -814,7 +827,7 @@ def main() -> int:
             pass
 
     try:
-        stats = analyze(repo, base, head, mode, args.top)
+        stats = analyze(repo, base, head, mode, args.top, args.ignore)
     except RuntimeError as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1

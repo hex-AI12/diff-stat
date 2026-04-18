@@ -15,6 +15,7 @@ Zero dependencies at runtime. Just Python and git.
 - Computes a 0 to 100 risk score with human-readable factors
 - Supports commit-to-commit, staged, and unstaged comparisons
 - Outputs terminal, Markdown, or JSON
+- Ignores generated or vendored paths with repeatable glob filters
 - Supports CI gating with `--risk-threshold`
 - Works as a single-file script or installable CLI
 
@@ -51,6 +52,9 @@ diff-stat main HEAD
 
 # Analyze staged changes only
 diff-stat --staged
+
+# Ignore generated or vendored paths
+diff-stat main HEAD --ignore "dist/*" --ignore "vendor/*"
 
 # Analyze unstaged working tree changes
 diff-stat --unstaged
